@@ -41,7 +41,8 @@ select @xml=
 select 
   x.value('./@ActivityCode[1]', 'nvarchar(max)') as ActivityCode,
   x.value('./@ActivityType[1]', 'nvarchar(max)') as ActivityType,
-  x.value('./@AdjustmentType[1]', 'nvarchar(max)') as AdjustmentType
+  x.value('./@AdjustmentType[1]', 'nvarchar(max)') as AdjustmentType,
+  x.value('./AdjustmentDtl[1]/@AdjustmentDtlID[1]', 'nvarchar(max)') as AdjustmentDtl
 into #MyXMLTable
 from @xml.nodes('Adjustment') x (x)
 
