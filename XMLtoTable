@@ -1,90 +1,49 @@
-declare @xml xml,@provId nvarchar(11),@fileCreateDateTime datetime,@fileName nvarchar(30),@fileCatalog nvarchar(30)
+--with normal node
 
-select @xml=
+declare @xml xml
+select @xml = 
 '<?xml version="1.0" standalone="yes"?>
-<DocumentElement>
-  <bssXmlReader>
-    <NN>1</NN>
-    <KOD>206298</KOD>
-    <NAME>АВАМИС СПРЕЙ НАЗ. ДОЗИР. 27,5 МКГ/ДОЗА ФЛ. 120ДОЗ</NAME>
-    <PROIZV>Глаксо Оперэйшенс Великобри GB</PROIZV>
-    <COUNTRY>СОЕДИНЕННОЕ КОР</COUNTRY>
-    <KOLVO>2</KOLVO>
-    <CENAPROIZ>473.09</CENAPROIZ>
-    <NDSPROIZV>10</NDSPROIZV>
-    <SUMNDSPRO>94.62</SUMNDSPRO>
-    <CENAPRNDS>520.4</CENAPRNDS>
-    <REESTR>0</REESTR>
-    <NADBPROC>7</NADBPROC>
-    <SUMNADB>33.12</SUMNADB>
-    <CENABNDS>506.21</CENABNDS>
-    <NDSPOSTAV>10</NDSPOSTAV>
-    <SUMNDSPOS>101.24</SUMNDSPOS>
-    <CENASNDS>556.83</CENASNDS>
-    <SUMMABNDS>1012.42</SUMMABNDS>
-    <SUMMANDS>101.24</SUMMANDS>
-    <SUMMA>1113.66</SUMMA>
-    <SERII>C774628</SERII>
-    <SERTIF>POCC GB.ФM08.Д33372</SERTIF>
-    <DATAEND>01.06.2019</DATAEND>
-    <N_DECLAR>10130130/230816/0012100/2</N_DECLAR>
-    <SUPPLIER>ПРОТЕК</SUPPLIER>
-    <EAN13>4607008131321</EAN13>
-    <NDOC>70085775-001</NDOC>
-    <DATEDOC>23.11.2016</DATEDOC>
-    <CDUU>277075</CDUU>
-    <GNVLS>0</GNVLS>
-    <PRC_OPT1>0</PRC_OPT1>
-    <PCT_OPT1>0</PCT_OPT1>
-    <SUM_OPT1>0</SUM_OPT1>
-    <SUM_OPT>0</SUM_OPT>
-    <SUM_PCT>0</SUM_PCT>
-  </bssXmlReader>
-</DocumentElement>
+    <DocumentElement>
+      <XmlReader>
+       <col_1>Первое значение</col_1>
+       <col_2>123456</col_2>
+       <col_3>some_text_col_3</col_3>
+      </XmlReader>
+    </DocumentElement>
 '
+select 
+  x.value('./col_1[1]', 'nvarchar(64)') as col_1,
+  x.value('./col_2[1]', 'int') as col_2,
+  x.value('./col_3[1]', 'nvarchar(64)') as col_3
+into #MyXMLTable 
+from @xml.nodes('DocumentElement/XmlReader') x (x)
 
-SELECT 
-		ROW_NUMBER() OVER (ORDER BY bssXml)				AS Id,
-		@provID											as PROV_ID,
-		bssXml.value('./CDUU[1]','nvarchar(20)')		as PODRCD,
-		bssXml.value('./NDOC[1]','nvarchar(30)')		as NDOC,
-		bssXml.value('./DATEDOC[1]','nvarchar(19)')		as DATEDOC,
-		bssXml.value('./KOD[1]','nvarchar(36)')			as CODEPST,
-		bssXml.value('./NAME[1]','nvarchar(150)')		as NAME,
-		bssXml.value('./COUNTRY[1]','nvarchar(20)')		as CNTR,
-		bssXml.value('./PROIZV[1]','nvarchar(100)')		as FIRM,
-		bssXml.value('./N_DECLAR[1]','nvarchar(100)')	as NUMGTD,
-		bssXml.value('./SERTIF[1]','nvarchar(100)')		as SERTIF,
-		bssXml.value('./SERII[1]','nvarchar(100)')		as SER,
-		bssXml.value('./DATAEND[1]','nvarchar(19)')		as GDATE,
-		bssXml.value('./KOLVO[1]','decimal(15,4)')		as QNT,
-		NULL											as DATEMADE,
-		bssXml.value('./REESTR[1]','decimal(15,2)')		as REGPRC,
-		bssXml.value('./NDSPOSTAV[1]','nvarchar(10)')	as NDS,
-		bssXml.value('./EAN13[1]','nvarchar(13)')		as BARCODE,
-		NULL											as PRICE1,
-		bssXml.value('./CENAPROIZ[1]','decimal(15,2)')	as PRICE1N,
-		bssXml.value('./CENASNDS[1]','decimal(15,2)')	as PRICE2,
-		bssXml.value('./CENABNDS[1]','decimal(15,2)')	as PRICE2N,
-		bssXml.value('./SUMMA[1]','decimal(15,2)')		as SUMSTR,
-		bssXml.value('./SUMMABNDS[1]','decimal(15,2)')	as SUMSTRN,
-		bssXml.value('./BILLNUM[1]','nvarchar(30)')		as BILLNUM,
-		bssXml.value('./BILLDT[1]','nvarchar(19)')		as BILLDT,
-		NULL											as SUBSTND,
-		NULL											as PRICEX,
-		bssXml.value('./NUMZ[1]','nvarchar(11)')		as NUMZ,
-		bssXml.value('./DATEZ[1]','nvarchar(19)')		as DATEZ,
-		bssXml.value('./OTSR_PL[1]','decimal(15,0)')	as OTSR_PL,
-		NULL											as DATEPAY,
-		NULL											as PRICESALE,
-		NULL											as ONLINENUM,
-		NULL											as CLPHONE,
-		@fileCreateDateTime								as FILE_DATE_TIME,
-		@fileName										as FILE_NAME,
-		@fileCatalog									as FILE_PATH
-	into #Table_DBF
-	FROM @XML.nodes('DocumentElement/bssXmlReader') AS [bssXmlReader] (bssXml)
-	
-	select * from #Table_DBF
-	
-	drop table #Table_DBF
+select * from #MyXMLTable
+drop table #MyXMLTable
+
+--with group node
+
+declare @xml xml
+select @xml=
+'<Adjustment
+	ActivityCode="Adjustment" 
+	ActivityType="Adjustment" 
+	AdjustmentType="+ Корректировка" 
+	TimeStamp="2017-04-11T15:13:17" 
+	MsgId="2138" TransType="40" 
+	UserId="FRomanov" 
+	Version="2.2" 
+	Warehouse="389" 
+	UniqueId="69">
+<AdjustmentDtl AdjustmentDtlID="2138" />
+</Adjustment>'
+
+select 
+  x.value('./@ActivityCode[1]', 'nvarchar(max)') as ActivityCode,
+  x.value('./@ActivityType[1]', 'nvarchar(max)') as ActivityType,
+  x.value('./@AdjustmentType[1]', 'nvarchar(max)') as AdjustmentType
+into #MyXMLTable
+from @xml.nodes('Adjustment') x (x)
+
+select * from #MyXMLTable
+drop table #MyXMLTable
