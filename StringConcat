@@ -1,0 +1,12 @@
+CREATE TABLE #test (id INT, kol INT, num INT)
+
+INSERT #test
+VALUES (290, 1, 32),(290, 5, 33),(300, 2, 34)
+
+select id,
+  res = stuff((select ', ' + cast(num AS varchar) + '-' + cast(kol  AS varchar)
+               from #test 
+               where id = t.id for xml path('')
+              ),1,1,' ')
+from #test t
+group by id
