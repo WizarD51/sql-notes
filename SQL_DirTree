@@ -1,1 +1,7 @@
-Exec xp_dirtree 'C:\';
+create table #temp (subdir nvarchar(250), lvl nvarchar(250))
+
+insert into #temp exec xp_dirtree 'T:\',0,0;
+
+select * from #temp
+
+drop table #temp
