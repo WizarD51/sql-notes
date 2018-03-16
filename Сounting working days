@@ -1,0 +1,42 @@
+DECLARE @DateStart datetime, @DateEnd datetime, @CounctDays int
+-- сюда количество дней которое надо добавить
+SET @CounctDays = 2
+
+--примем за начало - сегодня + сбросим время на 0:00 (опционально) если не надо то просто getdate()
+SET @DateStart =convert(nvarchar,getdate(),112)
+SELECT @DateStart
+
+-- если @@DATEFIRST = 7, значит выходные в РФ 7 и 1
+IF @@DATEFIRST = 7
+BEGIN
+	WHILE @CounctDays>0
+	BEGIN
+		IF DATEPART(dw,@DateStart) not in (1,7)
+		BEGIN
+			SET @DateStart = @DateStart+1
+			SET @CounctDays = @CounctDays-1
+		END
+		ELSE
+		BEGIN
+			SET @DateStart = @DateStart+1
+		END
+	END
+
+	SET @DateEnd = @DateStart
+
+	-- проверяем не является ли полученный день выходным
+	IF DATEPART(dw,@DateEnd) in (1,7)
+		BEGIN
+		IF DATEPART(dw,@DateEnd) = 1
+		BEGIN
+			SET @DateEnd = @DateEnd +1
+		END
+		IF DATEPART(dw,@DateEnd) = 7
+		BEGIN
+			SET @DateEnd = @DateEnd +2
+		END
+	END
+END
+
+-- выводим полученный результат
+SELECT @DateEnd [Result]
