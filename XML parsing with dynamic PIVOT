@@ -1,0 +1,36 @@
+DECLARE @XML as xml
+
+SELECT @XML = 
+'
+<root>
+<id>37</id>
+<order>84018</order>
+<city>56</city>
+<country>20</country>
+<date>2018-02-01</date>
+</root>
+'
+
+
+SELECT
+	x.y.value('local-name(.)', 'VARCHAR(MAX)') as NodeName,
+    x.y.value('.', 'VARCHAR(MAX)') as NodeValue	
+	into #XML
+FROM @xml.nodes('//*[not(*)]') AS x(y)
+
+Declare @Columns AS NVARCHAR(MAX),@SQL  AS NVARCHAR(MAX);
+
+SET @Columns = Stuff((SELECT DISTINCT ',' + QuoteName(NodeName) 
+                    From  #XML
+                   For XML Path(''), Type
+                   ).value('.', 'varchar(max)'),1,1,'')
+
+Set @SQL = 'Select * From #XML
+            Pivot (
+                   max(NodeValue)
+				   For [NodeName] in (' + @Columns + ')
+                  ) p '
+
+exec sp_executesql @SQL
+
+drop table #XML
