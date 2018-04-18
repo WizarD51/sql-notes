@@ -1,8 +1,0 @@
-DECLARE @Min int, @Max int, @Result int
-
-SET @Min = 0
-SET @Max = 10
-
-SET @Result = ABS(Checksum(NewID()) % @Max) + @Min
-
-SELECT @Result

@@ -1,0 +1,7 @@
+CREATE PROC [dbo].[GetRandom]
+@Min int, @Max int, @Result int = NULL output
+AS
+BEGIN
+SET @Result = ABS(Checksum(NewID()) % @Max) + @Min
+SELECT @Result
+END
