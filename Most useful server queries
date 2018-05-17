@@ -2,7 +2,7 @@ Check recovery mode for all databases:
 
 SELECT ect name, recovery_model_desc FROM sys.databases
 
-Drive size, space available
+-- Drive size, space available
 
 SELECT 
 DISTINCT
@@ -15,6 +15,9 @@ FROM sys.master_files f
 GROUP BY volume_mount_point, total_bytes/1048576,available_bytes/1048576 
 ORDER BY 1
 
+-- Размер лога базы данных и процент его использования
+
+DBCC SQLPERF(logspace);
 
 -- Список активных транзакций
 
