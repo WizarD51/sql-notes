@@ -70,5 +70,9 @@ SELECT
      ON r.[session_id] = s.[session_id]
  OUTER APPLY
      sys.dm_exec_sql_text(r.[sql_handle]) AS t
+     
+-- Блокировки в текущей сессии
+
+select * from sys.dm_tran_locks where request_session_id = @@SPID
 
 
