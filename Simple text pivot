@@ -1,0 +1,25 @@
+CREATE TABLE #temp_table (orderid int, atrib nvarchar(250), TempValue nvarchar(250));
+
+INSERT #temp_table
+VALUES
+(9213,N'Формат',N'20х20'),
+(9213,N'Количество',N'4'),
+(9213,N'Материал',N'кожа'),
+(9214,N'Формат',N'80х80'),
+(9214,N'Количество',N'1'),
+(9214,N'Материал',N'дерево');
+
+WITH temp AS 
+(SELECT * FROM #temp_table)
+
+SELECT orderid [Заказ],[Формат],[Количество],[Материал] 
+FROM temp 
+pivot
+(
+max(TempValue)
+for atrib
+in ([Формат],[Количество],[Материал]) 
+)
+as pvt
+
+DROP TABLE #temp_table
