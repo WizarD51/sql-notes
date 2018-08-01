@@ -1,0 +1,296 @@
+USE [master]
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+IF NOT EXISTS (SELECT TOP (1) 1 FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME = 'sp_MaintenanceProcedure')
+	EXEC ('CREATE PROC dbo.sp_MaintenanceProcedure AS SELECT ''stub version, will be replaced''')
+GO
+
+ALTER PROCEDURE [dbo].[sp_MaintenanceProcedure] 
+@InputParameter_DB_Name nvarchar(1000)=NULL,
+@InputParameter_MaintenanceType int=NULL,
+@InputParameter_BackupDestinationCatalog nvarchar(500)=NULL,
+@InputParameter_BackupCompression bit=NULL,
+@InputParameter_Help bit=NULL
+AS
+BEGIN
+SET NOCOUNT ON;
+
+DECLARE
+@SQL_Command nvarchar(max),
+@DB_ID int,
+@DB_Name nvarchar(500), 
+@IndexID int, 
+@IndexName nvarchar(500),
+@StatsID int,
+@StatsName nvarchar(500),
+@TableName nvarchar(500),
+@Delimeter nchar(1)=',',
+@Str nvarchar(MAX),
+@Ind int;
+
+IF @InputParameter_Help = 1
+BEGIN
+	PRINT 
+	'
+	--- WELCOME TO HELP ---
+
+	- INPUT PARAMETRES -
+	
+	1. @InputParameter_DB_Name, type: nvarchar(1000)
+
+	You can specified a few databases for maintenance, e.g. "[MyFirstDB]" or "[MyFirstDB],[MySecondDB]"
+	And absolutely doesn`t matter, what kind of definitions you choose, e.g. "[MyFirstDB]" or "MyFirstDB"   
+
+	2. @InputParameter_MaintenanceType, type: int 
+
+	Now script are support with following maintenance types:
+	0 - BACKUP (coming soon...)
+	1 - Indexes & Stats Maintenance
+	2 - Indexes Maintenance
+	3 - Stats Maintenance
+
+	3. @InputParameter_BackupDestinationCatalog, type: nvarchar(500) 
+
+	Only for backups! You must specified distination catalog for storage backup files, e.g. "T:\Backups"
+	Name of backup file will be generated automatically.
+	
+	4. @InputParameter_BackupCompression, type: bit
+
+	If you want to compress backup file, run procedure with @InputParameter_BackupCompression = 1.
+	By default backup comression is desabled.
+	
+	5. @InputParameter_Help, type: bit
+
+	If you want to read help massage, run procedure with @InputParameter_Help = 1.	
+
+	- EXAMPLE OF EXECUTION -
+
+	FYI! You can add YouDBN.. prefix when you store our procudure in [YouDB] database.
+
+	1. If you want to do index and statistics maintenance 
+
+	EXEC master..sp_MaintenanceProcedure "MyFirstDB",1,NULL,NULL,NULL (repalace "" with '''')
+	
+	2. If you want to read Help. 
+	
+	EXEC master..sp_MaintenanceProcedure NULL,NULL,NULL,NULL,1
+	
+	-- -- -- -- -- -- -- -- -- 
+	Feel free to contact me if you have any questions. Thank you for trying out the procedure. 
+	' 
+END
+
+IF OBJECT_ID(N'tempdb.dbo.#DB_List', 'U') IS NOT NULL
+DROP TABLE #DB_List;
+
+IF OBJECT_ID(N'tempdb.dbo.#IndexMaintenanceTable', 'U') IS NOT NULL
+DROP TABLE #IndexMaintenanceTable;
+
+IF OBJECT_ID(N'tempdb.dbo.#StatsMaintenanceTable', 'U') IS NOT NULL
+DROP TABLE #StatsMaintenanceTable;
+
+CREATE TABLE #DB_List (rn int identity(1,1),[DB_Name] nvarchar(500))
+CREATE TABLE #IndexMaintenanceTable ([rn] int identity(1,1), [DB_Name] nvarchar(500), [TableName] nvarchar(500), [IndexName] nvarchar(500), [avg_frag] float);
+CREATE TABLE #StatsMaintenanceTable (rn int identity(1,1), TableName nvarchar(500),StatsName nvarchar(500)) 
+
+IF (@InputParameter_DB_Name IS NOT NULL AND isnull(@InputParameter_Help,0) = 0)
+BEGIN
+	IF @InputParameter_MaintenanceType IS NOT NULL
+	BEGIN
+		WHILE (LEN(@InputParameter_DB_Name)>0) 
+		BEGIN
+		SET @Ind=CHARINDEX(',', @InputParameter_DB_Name);
+		IF(@Ind>0) 
+		SET @Str=RTRIM(LTRIM(LEFT(@InputParameter_DB_Name, @Ind-1)));
+		ELSE
+		BEGIN
+			SET @Str = RTRIM(LTRIM(@InputParameter_DB_Name));
+			SET @InputParameter_DB_Name=N'';
+		END
+
+		INSERT #DB_List([DB_Name])
+		SELECT replace(replace(@Str,'[',''),']','');
+
+		SET @InputParameter_DB_Name=RIGHT(@InputParameter_DB_Name, LEN(@InputParameter_DB_Name)-@Ind);
+		END;
+	END
+	ELSE
+	IF (@InputParameter_MaintenanceType IS NULL AND isnull(@InputParameter_Help,0) = 0)
+	BEGIN
+		PRINT 'Please specify "Maintenance Type" for input parameter!'
+	END
+END
+ELSE
+IF (@InputParameter_DB_Name IS NULL AND isnull(@InputParameter_Help,0) = 0)
+BEGIN
+	PRINT 'Please specify "Database name" for input parameter!'
+END
+
+IF (EXISTS (SELECT TOP (1) 1 FROM #DB_List) AND @InputParameter_MaintenanceType IS NOT NULL AND @InputParameter_DB_Name IS NOT NULL)
+BEGIN
+	WHILE (SELECT COUNT(1) FROM #DB_List)>0
+	BEGIN
+		SELECT TOP (1) @DB_ID = [rn] FROM #DB_List
+		SELECT @DB_Name=[DB_Name] FROM #DB_List WHERE [rn] = @DB_ID
+		
+		IF @InputParameter_MaintenanceType IN (0)
+		BEGIN
+			IF @InputParameter_BackupDestinationCatalog IS NOT NULL
+			BEGIN
+				SELECT @SQL_Command = 
+				'BACKUP DATABASE ['+@DB_Name+'] TO  DISK = N'''+@InputParameter_BackupDestinationCatalog+'\MaintenanceBackup_'+@DB_Name+'.bak''
+				WITH NOFORMAT, NOINIT,  NAME = N'''+@DB_Name+'-Full Database Backup'', SKIP, NOREWIND, NOUNLOAD, '+CASE WHEN isnull(@InputParameter_BackupCompression,0)=0 THEN 'NO_COMPRESSION' ELSE 'COMPRESSION' END
+
+				BEGIN TRY
+					EXEC SP_EXECUTESQL @SQL_Command
+					PRINT N'Index '+@IndexName+' sucssesfully REORGANIZED / REBUILDED =)'
+				END TRY
+				BEGIN CATCH
+					PRINT N'Something went wrong... with '+@DB_Name+' backup. =('
+				END CATCH 
+			END
+			ELSE
+			BEGIN
+				PRINT 'You must specified distination catalog for storage backup files'
+			END
+		END
+		
+		IF @InputParameter_MaintenanceType IN (1,2)
+		BEGIN
+			INSERT #IndexMaintenanceTable
+			SELECT 
+			d.name [DB_Name],
+			t.name [TableName], 
+			i.name [IndexName],
+			ROUND(ips.avg_fragmentation_in_percent, 2, 1) [avg_frag] 
+			FROM sys.tables	t 
+			join sys.indexes i on t.object_id = i.object_id
+			join sys.dm_db_index_physical_stats (DB_ID(@DB_Name), NULL, NULL, NULL, NULL) ips on t.object_id=ips.object_id
+			join sys.databases d on ips.database_id=d.database_id
+			WHERE 
+			ips.avg_fragmentation_in_percent>5
+			AND d.name = @DB_Name 
+
+			IF EXISTS (SELECT TOP (1) 1 FROM #IndexMaintenanceTable)
+			BEGIN
+				WHILE (SELECT COUNT(1) FROM #IndexMaintenanceTable)>0
+				BEGIN 
+					SELECT TOP (1) @IndexID = [rn] FROM #IndexMaintenanceTable
+					SELECT @IndexName=IndexName, @TableName=TableName FROM #IndexMaintenanceTable WHERE [rn] = @IndexID
+
+					IF (SELECT [avg_frag] FROM #IndexMaintenanceTable WHERE [rn] = @IndexID)<=30
+					BEGIN
+						SELECT @SQL_Command = N'ALTER INDEX '+@IndexName+N' ON '+@DB_Name+'..'+@TableName+N' REORGANIZE;'
+					END
+					ELSE
+					BEGIN
+						SELECT @SQL_Command = N'ALTER INDEX '+@IndexName+N' ON '+@DB_Name+'..'+@TableName+N' REBUILD;'
+					END
+
+					BEGIN TRY
+						EXEC SP_EXECUTESQL @SQL_Command
+						PRINT N'Index '+@IndexName+' sucssesfully REORGANIZED / REBUILDED =)'
+					END TRY
+					BEGIN CATCH
+						PRINT N'Something went wrong... with '+@IndexName+' index. =('
+					END CATCH 
+
+					DELETE FROM #IndexMaintenanceTable WHERE [rn] = @IndexID
+				END
+			END
+			ELSE
+			BEGIN
+				PRINT N'All indexes in database ['+@DB_Name+'] have low levels of fragmentation (less than 5 percent).'
+			END
+		END
+		
+		IF @InputParameter_MaintenanceType IN (1,3)
+		BEGIN
+			IF (SELECT SUBSTRING(CAST(SERVERPROPERTY('productversion') as nvarchar(50)),1,CHARINDEX('.', CAST(SERVERPROPERTY('productversion') as nvarchar(50)))-1)) < 10
+			OR ((SELECT @@VERSION) like '%SQL Server 2008%' AND (SELECT SERVERPROPERTY('ProductLevel')) not in ('SP2','SP3'))
+			BEGIN
+			EXEC (N'USE '+ @DB_Name + '; 
+				INSERT #StatsMaintenanceTable 
+				SELECT DISTINCT 
+				object_name (i.id)as objectname,    
+				i.name as indexname
+				from sysindexes i INNER JOIN dbo.sysobjects o ON i.id = o.id
+				LEFT JOIN sysindexes si ON si.id = i.id AND si.rows > 0 
+				WHERE i.rowmodctr > 
+				CASE WHEN (si.rows <= 5000000)
+				  THEN ((si.rows) * 0.10 + 500)
+				WHEN ((si.rows) > 5000000 AND (si.rows) <= 10000000)
+				  THEN ((si.rows) * 0.5 + 500)
+				WHEN ((si.rows) > 10000000 AND (si.rows) <= 100000000)
+				  THEN ((si.rows) * 0.03 + 500)
+				WHEN ((si.rows) > 100000000)
+				  THEN ((si.rows) * 0.01 + 500)
+				END
+				AND i.name not like ''sys%''
+				AND object_name(i.id) not like ''sys%''
+				AND o.type = ''U''')
+			END
+			ELSE
+			BEGIN
+			EXEC (N'USE '+ @DB_Name + '; 
+				INSERT #StatsMaintenanceTable  
+			SELECT [Table],[Statistic] FROM (SELECT
+				sch.name  AS ''Schema'',
+				so.name as ''Table'',
+				ss.name AS ''Statistic'',
+			  NTILE(2) OVER (ORDER BY so.name) AS ord,
+			  sp.last_updated
+			FROM sys.stats ss
+			JOIN sys.objects so ON ss.object_id = so.object_id
+			JOIN sys.schemas sch ON so.schema_id = sch.schema_id
+			OUTER APPLY sys.dm_db_stats_properties(so.object_id, ss.stats_id) AS sp
+			WHERE so.TYPE = ''U''
+			AND [rows] > 1000 
+			AND (sp.modification_counter >
+				CASE WHEN (sp.rows <= 5000000)
+				THEN ((sp.rows) * 0.10 + 500)
+			  WHEN ((sp.rows) > 5000000 AND (sp.rows) <= 10000000)
+				THEN ((sp.rows) * 0.5 + 500)
+			  WHEN ((sp.rows) > 10000000 AND (sp.rows) <= 100000000)
+				THEN ((sp.rows) * 0.03 + 500)
+			  WHEN ((sp.rows) > 100000000)
+				THEN ((sp.rows) * 0.01 + 500) END
+			OR (rows_sampled < rows/2 and ss.name NOT LIKE ''_WA_Sys%''))
+			) AS stat
+			WHERE ord = 1
+			ORDER BY stat.last_updated DESC')
+			END
+
+			IF EXISTS (SELECT TOP (1) 1 FROM #StatsMaintenanceTable)
+			BEGIN
+				WHILE (SELECT COUNT(1) FROM #StatsMaintenanceTable)>0
+				BEGIN
+					SELECT TOP (1) @StatsID = [rn] FROM #StatsMaintenanceTable
+					SELECT @TableName=TableName,@StatsName=StatsName FROM #StatsMaintenanceTable WHERE [rn] = @StatsID;
+					SELECT @SQL_Command = 'UPDATE STATISTICS '+@DB_Name+'..'+@TableName+'('+@StatsName+') WITH FULLSCAN, NORECOMPUTE;';
+					BEGIN TRY
+						EXEC SP_EXECUTESQL @SQL_Command
+						PRINT N'Stats '+@DB_Name+'..'+@TableName+'('+@StatsName+') sucssesfully updated =)'
+					END TRY
+					BEGIN CATCH
+						PRINT N'Something went wrong... with '+@DB_Name+'..'+@TableName+'('+@StatsName+')  =('
+					END CATCH
+
+					DELETE FROM #StatsMaintenanceTable WHERE [rn] = @StatsID;
+				END 
+			END
+			ELSE
+			BEGIN
+				PRINT 'All statistics on database ['+@DB_Name+'] are up to date.'
+			END
+		END		
+			 
+		DELETE FROM #DB_List WHERE [rn] = @DB_ID
+	END;
+END;
+END
