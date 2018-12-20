@@ -15,30 +15,30 @@ FROM sys.master_files f
 GROUP BY volume_mount_point, total_bytes/1048576,available_bytes/1048576 
 ORDER BY 1
 
--- Размер лога базы данных и процент его использования
+-- Database log size and filled percentage
 
 DBCC SQLPERF(logspace);
 
--- Список активных транзакций
+-- Active tran list
 
 SELECT * FROM sys.[dm_tran_active_transactions]
 
--- Список текущих транзакций
+-- Current tran list
 
 SELECT * FROM sys.[dm_tran_current_transaction]
 
--- Список транзакций в текущей сессии
+-- Active tran list in current session
 
 SELECT * FROM sys.[dm_tran_session_transactions]
 
--- Блокировки с зависимостями
+-- Locks with dependencies
 
 select * from sys.sysprocesses
 where spid in (select blocked from sys.sysprocesses where blocked > 0)
 or blocked > 0
 order by waittime
 
--- Сессии подробно
+-- More info about session
 
 SELECT 
    r.[session_id],
@@ -74,11 +74,11 @@ SELECT
  OUTER APPLY
      sys.dm_exec_sql_text(r.[sql_handle]) AS t
      
--- Блокировки в текущей сессии
+-- Locks in current session
 
 select * from sys.dm_tran_locks where request_session_id = @@SPID
 
--- Статистика бэкапирования
+-- Backups stats
 
 SELECT 
 CONVERT(CHAR(100), SERVERPROPERTY('Servername')) AS Server, 
