@@ -1,0 +1,9 @@
+SELECT name,collation_name FROM sys.databases;
+
+ALTER DATABASE [MyDatabase] SET SINGLE_USER;
+
+ALTER DATABASE [MyDatabase] COLLATE French_CI_AS;
+
+ALTER DATABASE [MyDatabase] SET MULTI_USER;
+
+SELECT name,collation_name FROM sys.databases;
