@@ -1,0 +1,17 @@
+DECLARE @EnableOrRebuild as nvarchar(20) 
+SET @EnableOrRebuild = 'DISABLE'  
+/* SET @EnableOrRebuild = 'REBUILD' */ -- Uncomment for REBUILD
+DECLARE @TableName as nvarchar(200) = 'myTable' -- Enter your table name here
+DECLARE @SchemaName as nvarchar(200) = 'dbo' -- Enter the schema here
+DECLARE @Sql AS nvarchar(MAX)='';
+
+SELECT @Sql = @Sql + N'ALTER INDEX ' + quotename(i.name) + N' ON ' + quotename(s.name) + '.' + quotename(o.name) + ' ' + @EnableOrRebuild + N';' + CHAR(13) + CHAR(10)
+  FROM sys.indexes i
+ INNER JOIN sys.objects o ON i.object_id = o.object_id
+ INNER JOIN sys.schemas s ON s.schema_id = o.schema_id
+ WHERE i.type_desc = N'NONCLUSTERED'
+   AND o.type_desc = N'USER_TABLE'
+   AND o.name = @TableName 
+   AND s.name = @SchemaName
+
+EXEC (@Sql);
