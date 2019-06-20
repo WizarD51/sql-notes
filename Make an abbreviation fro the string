@@ -1,0 +1,9 @@
+DECLARE @string NVARCHAR(MAX);
+SET @string = N'Делаем абревиатуру из строки';
+DECLARE @textXML XML;
+SELECT @textXML = CAST('<d>'+REPLACE(@string, ' ', '</d><d>')+'</d>' AS XML);
+DECLARE @result NVARCHAR(MAX);
+SET @result = '';
+SELECT @result = @result+LEFT(T.split.value('.', 'nvarchar(max)'), 1)
+FROM @textXML.nodes('/d') T(split);
+SELECT UPPER(@result);
