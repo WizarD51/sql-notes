@@ -1,0 +1,12 @@
+$TargetFolder = "C:\MSSQL\Backup" # Путь к папке бэкапов.
+$Period = "-30" # Количество хранимых дней.
+
+# Вычисляем дату после которой будем удалять файлы.
+$CurrentDay = Get-Date
+$ChDaysDel = $CurrentDay.AddDays($Period)
+
+# Удаление файлов, дата создания которых больше заданного количества дней
+GCI -Path $TargetFolder -Recurse | Where-Object {$_.CreationTime -LT $ChDaysDel} | RI -Recurse -Force 
+
+# Удаление пустых папок
+GCI -Path $TargetFolder -Recurse | Where-Object {$_.PSIsContainer -and @(Get-ChildItem -Path $_.Fullname -Recurse | Where { -not $_.PSIsContainer }).Count -eq 0 } | RI -Recurse
