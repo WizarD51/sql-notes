@@ -1,4 +1,4 @@
-DECLARE @DatabaseName sysname = '" + DBName + @"';
+DECLARE @DatabaseName sysname = DB_NAME ( DB_ID());
 DECLARE @BackupChain TABLE
       (
       physical_device_name NVARCHAR (260),
@@ -12,7 +12,7 @@ DECLARE
       @LogsAfter DATETIME;
 
 INSERT INTO @BackupChain
-SELECT   TOP (1)
+SELECT
          physical_device_name,
          type,
          backup_finish_date
@@ -31,7 +31,7 @@ WHERE  type = 'D';
 IF @LastFull IS NOT NULL
 BEGIN
       INSERT INTO @BackupChain
-      SELECT   TOP (1)
+      SELECT   
                physical_device_name,
                type,
                backup_finish_date
