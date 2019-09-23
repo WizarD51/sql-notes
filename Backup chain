@@ -1,0 +1,72 @@
+DECLARE @DatabaseName sysname = '" + DBName + @"';
+DECLARE @BackupChain TABLE
+      (
+      physical_device_name NVARCHAR (260),
+      type CHAR (1),
+      backup_finish_date DATETIME
+      );
+
+DECLARE
+      @LastFull DATETIME,
+      @LastDiff DATETIME,
+      @LogsAfter DATETIME;
+
+INSERT INTO @BackupChain
+SELECT   TOP (1)
+         physical_device_name,
+         type,
+         backup_finish_date
+FROM     msdb.dbo.backupset b
+JOIN     msdb.dbo.backupmediafamily mf ON b.media_set_id = mf.media_set_id
+WHERE    b.is_copy_only = 0
+         AND b.type = 'D'
+         AND b.database_name = @DatabaseName
+ORDER BY backup_finish_date DESC;
+
+SELECT TOP (1)
+       @LastFull = backup_finish_date
+FROM   @BackupChain
+WHERE  type = 'D';
+
+IF @LastFull IS NOT NULL
+BEGIN
+      INSERT INTO @BackupChain
+      SELECT   TOP (1)
+               physical_device_name,
+               type,
+               backup_finish_date
+      FROM     msdb.dbo.backupset b
+      JOIN     msdb.dbo.backupmediafamily mf ON b.media_set_id = mf.media_set_id
+      WHERE    b.is_copy_only = 0
+               AND b.type = 'I'
+               AND b.backup_finish_date > @LastFull
+               AND b.database_name = @DatabaseName
+      ORDER BY backup_finish_date DESC;
+
+      SELECT
+            @LastDiff = backup_finish_date
+      FROM  @BackupChain
+      WHERE type = 'I';
+
+      SET @LogsAfter = ISNULL(@LastDiff, @LastFull);
+
+      INSERT INTO @BackupChain
+      SELECT
+               physical_device_name,
+               type,
+               backup_finish_date
+      FROM     msdb.dbo.backupset b
+      JOIN     msdb.dbo.backupmediafamily mf ON b.media_set_id = mf.media_set_id
+      WHERE    b.is_copy_only = 0
+               AND b.type = 'L'
+               AND b.backup_finish_date > @LogsAfter
+               AND b.database_name = @DatabaseName
+      ORDER BY backup_finish_date ASC;
+
+      SELECT
+               physical_device_name,
+               type,
+               backup_finish_date
+      FROM     @BackupChain
+      ORDER BY backup_finish_date;
+END;
