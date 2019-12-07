@@ -89,3 +89,54 @@ SELECT
 	  x.value('./confi[1]/xml[1]/DesiredConfigurationDigest[1]/DisplayName[1]/@ResourceId[1]', 'nvarchar(max)') AS [ResourceId]
 FROM  @xml.nodes('CIR') x(x);
 
+----- /// ----- /// ----- /// ----- /// ----- /// ----- 
+
+DECLARE
+@xml AS XML;
+
+SELECT @xml = 
+'<ROOT>
+  <Customers>
+    <Customer CustomerName="Arshad Ali" CustomerID="C001">
+      <Orders>
+        <Order OrderDate="2012-07-04T00:00:00" OrderID="10248">
+          <OrderDetail Quantity="5" ProductID="10" />
+          <OrderDetail Quantity="12" ProductID="11" />
+          <OrderDetail Quantity="10" ProductID="42" />
+        </Order>
+      </Orders>
+      <Address> Address line 1, 2, 3</Address>
+    </Customer>
+    <Customer CustomerName="Paul Henriot" CustomerID="C002">
+      <Orders>
+        <Order OrderDate="2011-07-04T00:00:00" OrderID="10245">
+          <OrderDetail Quantity="12" ProductID="11" />
+          <OrderDetail Quantity="10" ProductID="42" />
+        </Order>
+      </Orders>
+      <Address> Address line 5, 6, 7</Address>
+    </Customer>
+    <Customer CustomerName="Carlos Gonzlez" CustomerID="C003">
+      <Orders>
+        <Order OrderDate="2012-08-16T00:00:00" OrderID="10283">
+          <OrderDetail Quantity="3" ProductID="72" />
+        </Order>
+      </Orders>
+      <Address> Address line 1, 4, 5</Address>
+    </Customer>
+  </Customers>
+</ROOT>'
+
+SELECT
+	c.value('./@CustomerID', 'nvarchar(10)') AS CustomerID,
+	c.value('./@CustomerName', 'nvarchar(250)') AS CustomerName,
+	c.value('./Orders[1]/Order[1]/@OrderID[1]', 'int') AS OrderID,
+	c.value('./Orders[1]/Order[1]/@OrderDate[1]', 'datetime') AS OrderDate,
+	f.value('./@ProductID', 'int') AS ProductID,
+	f.value('./@Quantity', 'int') AS Quantity, 
+	c.value('.[1]', 'nvarchar(100)') AS Address
+FROM @xml.nodes('ROOT/Customers') a(b)
+CROSS APPLY a.b.nodes('./Customer') d(c)
+CROSS APPLY d.c.nodes('./Orders/Order/OrderDetail') e(f)
+
+
