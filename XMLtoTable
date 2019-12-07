@@ -1,4 +1,4 @@
---with normal node
+--- with normal node ----- /// ----- /// ----- /// ----- /// ----- 
 
 declare @xml xml
 select @xml = 
@@ -21,7 +21,7 @@ from @xml.nodes('DocumentElement/XmlReader') x (x)
 select * from #MyXMLTable
 drop table #MyXMLTable
 
---with group node
+--- with group node ----- /// ----- /// ----- ///----- ///-----  
 
 declare @xml xml
 select @xml=
@@ -48,3 +48,44 @@ from @xml.nodes('Adjustment') x (x)
 
 select * from #MyXMLTable
 drop table #MyXMLTable
+
+----- /// ----- /// ----- /// ----- /// ----- /// ----- 
+
+DECLARE @xml xml
+
+SELECT @xml=
+    '<CIR Name="SEP" Description="des_sep">
+  <confi CreatedBy="domen\e123" DateCreated="2010-00-14T07:21:38">
+    <xml>
+      <DesiredConfigurationDigest xmlns="http://schemas.com">
+        <!--Version: 5-->
+            <DisplayName Text="Antivirus" ResourceId="ID-0a" />
+            <Description Text="Test Antivirus" />
+          <Settings>
+            <RootComplexSetting>
+                  <DisplayName Text="Is Symantec" ResourceId="ID-4a" />
+                  <Description Text="" />
+                <ScriptDiscoverySource Is64Bit="true">
+                  <DiscoveryScriptBody ScriptType="VBScript">Set oShell = CreateObject("Shell.Application")
+If Not oShell.IsServiceRunning("Symantec") Then
+  wscript.echo 1
+End If</DiscoveryScriptBody>
+                </ScriptDiscoverySource>
+            </RootComplexSetting>
+          </Settings>
+      </DesiredConfigurationDigest>
+    </xml>
+  </confi>
+</CIR>'
+
+SELECT @xml = CAST(REPLACE(CAST(@xml AS NVARCHAR(MAX)),'xmlns','text') AS XML)
+
+SELECT
+      x.value('./@Name[1]', 'nvarchar(max)') AS [Name],
+      x.value('./@Description[1]', 'nvarchar(max)') AS [Description],
+      x.value('./confi[1]/@CreatedBy[1]', 'nvarchar(max)') AS CreatedBy,
+      x.value('./confi[1]/@DateCreated[1]', 'nvarchar(max)') AS DateCreated,
+	  x.value('./confi[1]/xml[1]/DesiredConfigurationDigest[1]/DisplayName[1]/@Text[1]', 'nvarchar(max)') AS [Text],
+	  x.value('./confi[1]/xml[1]/DesiredConfigurationDigest[1]/DisplayName[1]/@ResourceId[1]', 'nvarchar(max)') AS [ResourceId]
+FROM  @xml.nodes('CIR') x(x);
+
